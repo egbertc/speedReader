@@ -27,6 +27,7 @@ import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
@@ -37,17 +38,19 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.ProgressBarTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.util.Callback;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.util.PDFTextStripper;
+import uchicago.egbertc.profinaladv.RsvpFXMLController.ReadTask;
 
 
 public class RsvpFXMLController {
     
-    private Task readTask;
-    private String readString;
+    private Task<Double> readerTask;
+    //private String readString;
     private String[] wordSplit;
     public static final int WORD_DELAY = 400;
     public ExecutorService executor;
@@ -79,6 +82,14 @@ public class RsvpFXMLController {
     private Button btnFileFinder;
      
      @FXML
+    private Button btnNext;
+     
+     @FXML
+    void goToReader(ActionEvent event) {
+        
+    }
+     
+     @FXML
     void fileDrag(ActionEvent event) {
         System.out.println("FILE DRAG");
     }
@@ -99,12 +110,12 @@ public class RsvpFXMLController {
        // btnToggleRead.setSelected(!btnToggleRead.isSelected());
         System.out.println("BUTTON is Selected: " +btnToggleRead.isSelected());
         
-        if(readTask.isRunning())
-            readTask.cancel();
+        if(readerTask.isRunning())
+            readerTask.cancel();
         else
         {
-            initTask();
-            new Thread(readTask).start();
+            initRead();//readerTask.run();
+            //new Thread(readTask).start();
         }
         
     }
@@ -117,10 +128,10 @@ public class RsvpFXMLController {
         assert btnToggleRead != null : "fx:id=\"btnToggleRead\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
         
         
-        readString = "Hello there, the Angel from my nightmare. The Shadow in the background of the morgue. "
-                + "The unsuspecting victim, of darkness in the valley we can live like jack and sally if we want. "
-                + "Where you can always find me, we'll have halloween on christmas and in the night we'll wish this never ends... "
-                + "wish this never ends..."; 
+//        readString = "Hello there, the Angel from my nightmare. The Shadow in the background of the morgue. "
+//                + "The unsuspecting victim, of darkness in the valley we can live like jack and sally if we want. "
+//                + "Where you can always find me, we'll have halloween on christmas and in the night we'll wish this never ends... "
+//                + "wish this never ends..."; 
         
         TableColumn<FileDownTask, String> statusCol = new TableColumn("Status");
         statusCol.setCellValueFactory(new PropertyValueFactory<FileDownTask, String>(
@@ -148,7 +159,7 @@ public class RsvpFXMLController {
             @Override
             public TableCell<FileDownTask, Boolean> call(TableColumn<FileDownTask, Boolean> personBooleanTableColumn)
             {
-                return new ToggleButtonCell(tblFiles, btnCol);
+                return new ButtonCell(tblFiles, btnCol);
             }
         });
 
@@ -176,29 +187,28 @@ public class RsvpFXMLController {
             }
         });
         
-//        for (FileDownTask pbarTask : tblFiles.getItems()) {
-//            executor.execute(pbarTask);
-//        }
         
         
-        initTask();
+        initRead();
     }
     
-    private class ToggleButtonCell extends TableCell<FileDownTask, Boolean>
+    private class ButtonCell extends TableCell<FileDownTask, Boolean>
     {
-        final ToggleButton tgl = new ToggleButton("Select");
+        final Button btn = new Button("Load");
+        final StackPane padButton = new StackPane();
         
-        ToggleButtonCell(final TableView tbl, final TableColumn col )
+        ButtonCell(final TableView tbl, final TableColumn col )
         {            
-            tgl.setOnAction(new EventHandler<ActionEvent>() {
+            padButton.setPadding(new Insets(3));
+            padButton.getChildren().add(btn);
+            btn.setOnAction(new EventHandler<ActionEvent>() {
                 @Override
                 public void handle(ActionEvent actionEvent) {
                     int index = tbl.getItems().size();
+                    
                     System.out.println("INDEX: " + index);
                     FileDownTask task = (FileDownTask) tbl.getItems().get(index-1);
-                    executor.execute(task);
-                    
-                    System.out.println("TEST.");
+                    executor.execute(task);                    
                 }
             });
         }
@@ -209,7 +219,7 @@ public class RsvpFXMLController {
             if(!empty)
             {
                 setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
-                setGraphic(tgl);
+                setGraphic(padButton);
             }
         }
         
@@ -217,36 +227,79 @@ public class RsvpFXMLController {
         
     }
     
-    private void initTask()
+    private void initRead()
     {
-        final String[] readWords = parseString(readString);
-        readTask = new Task<Void>() {
-
-            @Override
-            protected Void call() throws Exception {
-
-                for (final String str : readWords) {
-                    int delayBonus = punctuationDelay(str);
-                    Platform.runLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            lblReader.setText(str);
-                        }
-                    });
-                    //DELAY words per minute
-                    Thread.sleep((60 * 1000 / WORD_DELAY )  + (delayBonus*7500/WORD_DELAY));
-                }
-
-                Platform.runLater(new Runnable() {
+        //Thread reader = new Thread(ReadTask);
+        
+       readerTask = new ReadTask(wordSplit, WORD_DELAY);
+            
+            readerTask.setOnSucceeded(new EventHandler<WorkerStateEvent>()
+            {
                     @Override
-                    public void run() {
-                        btnToggleRead.setSelected(false);
+                    public void handle(WorkerStateEvent t)
+                    {
+                        readerTask.cancel();
+                        System.out.println("END OF FILE.");
+                        setupReader();
                     }
-                });
 
-                return null;
-            }
-        };
+                
+            });
+            
+            
+            executor.shutdown();
+            
+            executor = Executors.newFixedThreadPool(1, new ThreadFactory()
+            {
+                @Override
+                public Thread newThread(Runnable r)
+                {
+                    Thread t = new Thread(r);
+                    t.setDaemon(true);
+                    return t;
+                }
+            });
+            System.out.println("Attempting to Start");
+            executor.execute(readerTask);
+            
+            
+        //final String[] readWords = parseString(readString);
+//        readTask = new Task<Double>() {
+//
+//            @Override
+//            protected Double call() throws Exception {
+//                
+//                System.out.println("READ START" + wordSplit[600]);
+//                int wordCount = wordSplit.length;
+//                int current = 0;
+//                while(current < wordCount)
+//                {
+//                    System.out.println(wordSplit[current]);
+//                    final String word = wordSplit[current];
+//                    
+//                    int delayBonus = punctuationDelay(word);
+//                    
+//                    Platform.runLater(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            lblReader.setText(word);
+//                        }
+//                    });
+//                    //DELAY words per minute
+//                    Thread.sleep((60 * 1000 / WORD_DELAY )  + (delayBonus*7500/WORD_DELAY));
+//                }
+//
+//                Platform.runLater(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        btnToggleRead.setSelected(false);
+//                    }
+//                });
+//                
+//
+//                return 100.0;
+//            }
+//        };
     }
     
     private void addFiles(List<File> files)
@@ -263,10 +316,60 @@ public class RsvpFXMLController {
                         wordSplit = task.getValue();                        
                         System.out.println("LOADED!");
                         System.out.println("Words: " + wordSplit.length);
+                        setupReader();
                     }
+
+                
             });
             tblFiles.getItems().add((FileDownTask) task);
         }        
+    }
+    
+    private void setupReader()
+    {
+        btnNext.setDisable(false);
+        tabReader.setDisable(false);
+    }
+    
+    class ReadTask extends Task<Double>
+    {
+        private String[] wordSplit;
+        private int wordDelay;
+        
+        public ReadTask(String[] words, int delay)
+        {
+            this.wordSplit = words;
+            this.wordDelay = delay;
+        }
+        
+        @Override
+        protected Double call() throws Exception {
+            
+            System.out.println("READ START" + wordSplit[600]);
+                int wordCount = wordSplit.length;
+                int current = 0;
+                while(current < wordCount)
+                {
+                    System.out.println(wordSplit[current]);
+                    final String word = wordSplit[current];
+                    
+                    int delayBonus = punctuationDelay(word);
+                    
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            lblReader.setText(word);
+                        }
+                    });
+                    //DELAY words per minute
+                    Thread.sleep((60 * 1000 / wordDelay )  + (delayBonus*7500/wordDelay));
+                    current++;
+                    this.updateProgress(current, wordCount);
+                    this.updateValue((double)wordCount-current);
+                }
+            
+            return null;
+        }
     }
     
     class FileDownTask extends Task<String[]>
@@ -277,6 +380,7 @@ public class RsvpFXMLController {
             loadFile = f;
             this.updateTitle(loadFile.getName());
             this.updateMessage("standing by");
+            this.updateProgress(0, 10);
         }
         
         @Override
@@ -306,6 +410,7 @@ public class RsvpFXMLController {
                 int pages = stripper.getEndPage();
                 this.updateProgress(4, 10);
                 data = stripper.getText(pdfDoc);
+                System.out.println("PDF: " +data.substring(0, 5000));
                 this.updateProgress(10, 10);
 //                int currentPage = 1;
 //                int interval = pages/100;
@@ -357,9 +462,11 @@ public class RsvpFXMLController {
                 {
                     String line = s.next();
                     loaded += line.length()*2;
-                    data += line.replace("\n", " ");
+                    //data += line.replace("\n", " ");
+                    data += line;
                     this.updateProgress(loaded, fileSize);
                 }
+                s.close();
                 this.updateProgress(100,100);
                 return data;
             }

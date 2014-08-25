@@ -19,7 +19,7 @@
             <content>
               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                      <children>
-                        <TableView fx:id="tblFiles" layoutX="67.0" layoutY="86.0" onDragDropped="#fileDrag" prefHeight="200.0" prefWidth="466.0">
+                        <TableView fx:id="tblFiles" layoutX="67.0" layoutY="86.0" onDragDropped="#fileDrag" prefHeight="200.0" prefWidth="466.0" AnchorPane.bottomAnchor="85.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="80.0">
                           <columns>
                             
                           </columns>
@@ -28,11 +28,12 @@
                            </columnResizePolicy>
                         </TableView>
                         <Button fx:id="btnFileFinder" layoutX="274.0" layoutY="31.0" mnemonicParsing="false" onAction="#fileFinder" text="Open" />
+                        <Button fx:id="btnNext" disable="true" layoutX="466.0" layoutY="317.0" mnemonicParsing="false" onAction="#goToReader" text="Next" AnchorPane.bottomAnchor="35.0" AnchorPane.rightAnchor="35.0" />
                      </children>
                   </AnchorPane>
             </content>
           </Tab>
-          <Tab fx:id="tabReader" closable="false" text="Reader">
+          <Tab fx:id="tabReader" closable="false" disable="true" text="Reader">
             <content>
               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" style="-fx-background-color: black;">
                      <children>
