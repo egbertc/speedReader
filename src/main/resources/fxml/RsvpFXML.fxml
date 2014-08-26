@@ -25,7 +25,7 @@
                             
                           </columns>
                            <columnResizePolicy>
-                              <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                              
                            </columnResizePolicy>
                         </TableView>
                         <Button fx:id="btnFileFinder" layoutX="698.0" layoutY="27.0" mnemonicParsing="false" onAction="#fileFinder" text="Open" />
@@ -38,15 +38,15 @@
             <content>
               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" style="-fx-background-color: black;">
                      <children>
-                        <Label fx:id="lblReader" alignment="CENTER" layoutX="2.0" layoutY="45.0" mouseTransparent="true" prefHeight="141.0" prefWidth="771.0" text="Ready?" textAlignment="CENTER" textFill="WHITE">
+                        <Label fx:id="lblReader" alignment="CENTER" graphicTextGap="0.0" layoutX="2.0" layoutY="45.0" mouseTransparent="true" prefHeight="141.0" prefWidth="771.0" text="Ready?" textAlignment="CENTER" textFill="WHITE">
                            <font>
                               <Font size="96.0" />
                            </font>
                         </Label>
-                        <ToggleButton fx:id="btnToggleRead" layoutX="366.0" layoutY="300.0" mnemonicParsing="false" onAction="#toggleRead" text="Read" textAlignment="CENTER" />
+                        <ToggleButton id="readButton" fx:id="btnToggleRead" layoutX="366.0" layoutY="300.0" mnemonicParsing="false" onAction="#toggleRead" text="Read" textAlignment="CENTER" />
                         <ProgressBar fx:id="readProgress" layoutY="348.0" prefHeight="18.0" prefWidth="771.0" progress="0.0" style="-fx-background-color: #eeeeee; -fx-opacity: 65;" />
-                        <Slider fx:id="sldSpeed" layoutX="75.0" layoutY="306.0" max="1200.0" min="100.0" onDragDetected="#updateSpeed" value="600.0" />
-                        <Label fx:id="lblWPM" layoutX="626.0" layoutY="305.0" text="words/min" textFill="#ababab" />
+                        <Label fx:id="lblWPM" layoutX="88.0" layoutY="317.0" text="500 words/min" textFill="#ababab" />
+                        <TextField fx:id="txtSpeed" layoutX="100.0" layoutY="280.0" onAction="#updateSpeed" prefHeight="25.0" prefWidth="56.0" promptText="speed" />
                      </children>
                   </AnchorPane>
             </content>

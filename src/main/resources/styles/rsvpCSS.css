@@ -5,3 +5,16 @@
 .mainFxmlClass {
 
 }
+
+#readButton{
+    -fx-background-color: #5e892c;
+    -fx-text-fill: white;
+}
+
+#readButton:hover {
+    -fx-background-color: #87C540;
+}
+
+#readButton:selected {
+    -fx-background-color: #c33535;
+}

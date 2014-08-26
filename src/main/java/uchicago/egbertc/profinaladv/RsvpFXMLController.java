@@ -42,6 +42,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.cell.ProgressBarTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -59,7 +60,7 @@ public class RsvpFXMLController {
     private Task<Void> readerTask;
     //private String readString;
     private String[] wordSplit;
-    public static final int WORD_DELAY = 1500;
+    public  int wpm = 500;
     public ExecutorService executor;
     //PDDocument doc = new PDDocument();
 
@@ -97,12 +98,15 @@ public class RsvpFXMLController {
      @FXML
     private Label lblWPM;
      
-     @FXML
-    private Slider sldSpeed;
+    @FXML
+    private TextField txtSpeed;
      
-     @FXML
+    @FXML
     void updateSpeed(ActionEvent event) {
-        lblWPM.setText(sldSpeed.getValue() + " words/minute");
+        wpm = Integer.parseInt(txtSpeed.getText());
+        System.out.println(txtSpeed.getText());
+        txtSpeed.setText("");
+        lblWPM.setText(wpm + " words/minute");
     }
 
      
@@ -130,15 +134,13 @@ public class RsvpFXMLController {
     
     @FXML
     void toggleRead(ActionEvent event) {
-       // btnToggleRead.setSelected(!btnToggleRead.isSelected());
-        System.out.println("BUTTON is Selected: " +btnToggleRead.isSelected());
+       System.out.println("BUTTON is Selected: " +btnToggleRead.isSelected());
         
         if(readerTask.isRunning())
             readerTask.cancel();
         else
-        {
-            initRead();//readerTask.run();
-            //new Thread(readTask).start();
+        {            
+            initRead();
         }
         
     }
@@ -198,9 +200,7 @@ public class RsvpFXMLController {
 
         //add the cols
         tblFiles.getColumns().addAll(titleCol, statusCol, btnCol, progressCol);
-        
-        //readProgress.progressProperty().bind(readerTask.progressProperty());
-        
+                        
         executor = Executors.newFixedThreadPool(1, new ThreadFactory()
         {
             @Override
@@ -265,12 +265,11 @@ public class RsvpFXMLController {
             });
             System.out.println("Attempting to Start");
             
-           // lblReader.bind()
-        //final String[] readWords = parseString(readString);
+           
         readerTask = new Task<Void>() {
 
                 
-            private IntegerProperty spd = new SimpleIntegerProperty();
+            private IntegerProperty spd = new SimpleIntegerProperty(wpm);
             public final int getSpd()
             {
                 return spd.get();
@@ -289,7 +288,7 @@ public class RsvpFXMLController {
             @Override
             protected Void call() throws Exception {
                 int current = 0;
-                spd.set((int)sldSpeed.getValue());
+                
                 
                 for (final String str : wordSplit) {
                     int totCount = wordSplit.length;
@@ -298,10 +297,11 @@ public class RsvpFXMLController {
                         @Override
                         public void run() {
                             lblReader.setText(str);
+                            System.out.println("Width: " +lblReader.getWidth());
                         }
                     });
                     //DELAY words per minute
-                    Thread.sleep((60 * 1000 / WORD_DELAY )  );
+                    Thread.sleep((60 * 1000 / getSpd() )  );
                     current++;
                     this.updateProgress(current, totCount);
                 }
@@ -310,6 +310,8 @@ public class RsvpFXMLController {
                     @Override
                     public void run() {
                         //.setDisable(false);
+                        //spd.set(Integer.parseInt(txtSpeed.getText()));
+                        System.out.println("SPEED: " + getSpd());
                     }
                 });                
                
@@ -482,7 +484,8 @@ public class RsvpFXMLController {
         private String[] breakApart(String in)
         {
             this.updateMessage("seperating words");
-            String[] words = in.split(" ");
+            String removeBreaks = in.replace("\n", " ");
+            String[] words = removeBreaks.split(" ");
             this.updateMessage("ready.");
             return words;
         }
@@ -493,7 +496,10 @@ public class RsvpFXMLController {
     
     private String[] parseString(String in)
     {
+        
+        
         String[] words = in.split(" ");
+        
         return words;
     }
 }
