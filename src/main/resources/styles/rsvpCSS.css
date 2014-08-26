@@ -18,3 +18,31 @@
 #readButton:selected {
     -fx-background-color: #c33535;
 }
+
+#openFilesButton{
+    -fx-background-color: black;
+    -fx-text-fill: white;
+}
+
+#openFilesButton:hover {
+    -fx-background-color: #606060;
+}
+
+#openFilesButton:click {
+    -fx-background-color: black;
+    -fx-text-fill: #efefef;
+}
+
+#nextButton{
+    -fx-background-color: black;
+    -fx-text-fill: white;
+}
+
+#nextButton:hover {
+    -fx-background-color: #606060;
+}
+
+#nextButton:click {
+    -fx-background-color: black;
+    -fx-text-fill: #efefef;
+}
