@@ -37,6 +37,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableView;
@@ -132,7 +133,7 @@ public class RsvpFXMLController {
         fileChooser.setTitle("Open Files");
         fileChooser.getExtensionFilters().add(new ExtensionFilter("Text Files", "*.txt", "*.pdf"));
 
-        lstFiles.getSelectionModel().clearSelection();
+        //lstFiles.getSelectionModel().clearSelection();
         
         List<File> selected = fileChooser.showOpenMultipleDialog(null);
         ObservableList<File> files = FXCollections.observableArrayList();
@@ -142,6 +143,8 @@ public class RsvpFXMLController {
         }
 
         lstFiles.getItems().addAll(files);
+        
+        
 
         lstFiles.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<File>() {
             @Override
@@ -181,7 +184,9 @@ public class RsvpFXMLController {
             }
         });
         
-        //addFiles(selected);
+        if(lstFiles.getItems().size() == 1)
+            lstFiles.getSelectionModel().clearAndSelect(0);
+        
     }
 
     @FXML
@@ -206,7 +211,7 @@ public class RsvpFXMLController {
         assert tabReader != null : "fx:id=\"tabReader\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
         assert btnToggleRead != null : "fx:id=\"btnToggleRead\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
 
-        
+        lstFiles.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         
     }
 
@@ -230,12 +235,16 @@ public class RsvpFXMLController {
                 int anchorX = 0;
                 
             private final IntegerProperty speed = new SimpleIntegerProperty(wpm);
-
-            public final int getSpd() {
+            public final void updateSpeed()
+            {
+                speed.set(wpm);
+            }
+            public final int getSpeed() {
+                //speed.set(wpm);
                 return speed.get();
             }
 
-            public final void setSpd(int spd) {
+            public final void setSpeed(int spd) {
                 this.speed.set(spd);
             }
 
@@ -265,8 +274,8 @@ public class RsvpFXMLController {
                                 //System.out.println("Width: " + lblReader.getWidth());
                             }
                         });
-                        //DELAY words per minute
-                        Thread.sleep((60 * 1000 / getSpd())+(punctuationDelay(cleanStr)*getSpd()/40));
+                        updateSpeed();
+                        Thread.sleep((60 * 1000 / getSpeed())+(punctuationDelay(cleanStr)*getSpeed()/20));
                         current++;
                         this.updateProgress(current, totCount);
                     }
@@ -279,7 +288,7 @@ public class RsvpFXMLController {
                     public void run() {
                         //.setDisable(false);
                         //spd.set(Integer.parseInt(txtSpeed.getText()));
-                        System.out.println("SPEED: " + getSpd());
+                        System.out.println("SPEED: " + getSpeed());
                     }
                 });
                 
