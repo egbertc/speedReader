@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.effect.*?>
 <?import javafx.scene.text.*?>
 <?import java.lang.*?>
 <?import java.net.*?>
@@ -8,18 +9,18 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="600.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="uchicago.egbertc.profinaladv.RsvpFXMLController">
+<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="771.0" styleClass="mainFxmlClass" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="uchicago.egbertc.profinaladv.RsvpFXMLController">
     <stylesheets>
         <URL value="@/styles/rsvpCSS.css" />
     </stylesheets>
    <children>
-      <TabPane prefHeight="400.0" prefWidth="600.0" tabClosingPolicy="UNAVAILABLE">
+      <TabPane prefHeight="400.0" prefWidth="771.0" tabClosingPolicy="UNAVAILABLE">
         <tabs>
           <Tab fx:id="tabWelcome01" closable="false" text="Welcome">
             <content>
               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
                      <children>
-                        <TableView fx:id="tblFiles" layoutX="67.0" layoutY="86.0" onDragDropped="#fileDrag" prefHeight="200.0" prefWidth="466.0" AnchorPane.bottomAnchor="85.0" AnchorPane.leftAnchor="5.0" AnchorPane.rightAnchor="5.0" AnchorPane.topAnchor="80.0">
+                        <TableView fx:id="tblFiles" layoutX="67.0" layoutY="86.0" onDragDropped="#fileDrag" prefHeight="234.0" prefWidth="601.0">
                           <columns>
                             
                           </columns>
@@ -27,8 +28,8 @@
                               <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                            </columnResizePolicy>
                         </TableView>
-                        <Button fx:id="btnFileFinder" layoutX="274.0" layoutY="31.0" mnemonicParsing="false" onAction="#fileFinder" text="Open" />
-                        <Button fx:id="btnNext" disable="true" layoutX="466.0" layoutY="317.0" mnemonicParsing="false" onAction="#goToReader" text="Next" AnchorPane.bottomAnchor="35.0" AnchorPane.rightAnchor="35.0" />
+                        <Button fx:id="btnFileFinder" layoutX="698.0" layoutY="27.0" mnemonicParsing="false" onAction="#fileFinder" text="Open" />
+                        <Button fx:id="btnNext" disable="true" layoutX="692.0" layoutY="320.0" mnemonicParsing="false" text="Next" />
                      </children>
                   </AnchorPane>
             </content>
@@ -37,12 +38,15 @@
             <content>
               <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0" style="-fx-background-color: black;">
                      <children>
-                        <Label fx:id="lblReader" alignment="CENTER" layoutX="8.0" layoutY="58.0" mouseTransparent="true" prefHeight="141.0" prefWidth="585.0" text="Ready?" textAlignment="CENTER" textFill="WHITE">
+                        <Label fx:id="lblReader" alignment="CENTER" layoutX="2.0" layoutY="45.0" mouseTransparent="true" prefHeight="141.0" prefWidth="771.0" text="Ready?" textAlignment="CENTER" textFill="WHITE">
                            <font>
                               <Font size="96.0" />
                            </font>
                         </Label>
-                        <ToggleButton fx:id="btnToggleRead" layoutX="279.0" layoutY="322.0" mnemonicParsing="false" onAction="#toggleRead" text="Read" textAlignment="CENTER" />
+                        <ToggleButton fx:id="btnToggleRead" layoutX="366.0" layoutY="300.0" mnemonicParsing="false" onAction="#toggleRead" text="Read" textAlignment="CENTER" />
+                        <ProgressBar fx:id="readProgress" layoutY="348.0" prefHeight="18.0" prefWidth="771.0" progress="0.0" style="-fx-background-color: #eeeeee; -fx-opacity: 65;" />
+                        <Slider fx:id="sldSpeed" layoutX="75.0" layoutY="306.0" max="1200.0" min="100.0" onDragDetected="#updateSpeed" value="600.0" />
+                        <Label fx:id="lblWPM" layoutX="626.0" layoutY="305.0" text="words/min" textFill="#ababab" />
                      </children>
                   </AnchorPane>
             </content>

@@ -14,13 +14,18 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Scanner;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.application.Platform;
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
 import javafx.concurrent.WorkerStateEvent;
@@ -31,6 +36,8 @@ import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -44,15 +51,15 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.util.Callback;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.util.PDFTextStripper;
-import uchicago.egbertc.profinaladv.RsvpFXMLController.ReadTask;
+
 
 
 public class RsvpFXMLController {
     
-    private Task<Double> readerTask;
+    private Task<Void> readerTask;
     //private String readString;
     private String[] wordSplit;
-    public static final int WORD_DELAY = 400;
+    public static final int WORD_DELAY = 1500;
     public ExecutorService executor;
     //PDDocument doc = new PDDocument();
 
@@ -85,9 +92,25 @@ public class RsvpFXMLController {
     private Button btnNext;
      
      @FXML
+    private ProgressBar readProgress;
+     
+     @FXML
+    private Label lblWPM;
+     
+     @FXML
+    private Slider sldSpeed;
+     
+     @FXML
+    void updateSpeed(ActionEvent event) {
+        lblWPM.setText(sldSpeed.getValue() + " words/minute");
+    }
+
+     
+     @FXML
     void goToReader(ActionEvent event) {
         
     }
+    
      
      @FXML
     void fileDrag(ActionEvent event) {
@@ -176,6 +199,8 @@ public class RsvpFXMLController {
         //add the cols
         tblFiles.getColumns().addAll(titleCol, statusCol, btnCol, progressCol);
         
+        //readProgress.progressProperty().bind(readerTask.progressProperty());
+        
         executor = Executors.newFixedThreadPool(1, new ThreadFactory()
         {
             @Override
@@ -185,9 +210,7 @@ public class RsvpFXMLController {
                 t.setDaemon(true);
                 return t;
             }
-        });
-        
-        
+        });       
         
         initRead();
     }
@@ -229,27 +252,8 @@ public class RsvpFXMLController {
     
     private void initRead()
     {
-        //Thread reader = new Thread(ReadTask);
-        
-       readerTask = new ReadTask(wordSplit, WORD_DELAY);
-            
-            readerTask.setOnSucceeded(new EventHandler<WorkerStateEvent>()
-            {
-                    @Override
-                    public void handle(WorkerStateEvent t)
-                    {
-                        readerTask.cancel();
-                        System.out.println("END OF FILE.");
-                        setupReader();
-                    }
-
-                
-            });
-            
-            
-            executor.shutdown();
-            
-            executor = Executors.newFixedThreadPool(1, new ThreadFactory()
+                    
+            Executor readExec = Executors.newFixedThreadPool(1, new ThreadFactory()
             {
                 @Override
                 public Thread newThread(Runnable r)
@@ -260,46 +264,69 @@ public class RsvpFXMLController {
                 }
             });
             System.out.println("Attempting to Start");
-            executor.execute(readerTask);
             
-            
+           // lblReader.bind()
         //final String[] readWords = parseString(readString);
-//        readTask = new Task<Double>() {
-//
+        readerTask = new Task<Void>() {
+
+                
+            private IntegerProperty spd = new SimpleIntegerProperty();
+            public final int getSpd()
+            {
+                return spd.get();
+            }
+
+            public final void setSpd(int spd)
+            {
+                this.spd.set(spd);
+            }
+                
+            public IntegerProperty speedProperty()
+            {
+                return spd;
+            }
+            
+            @Override
+            protected Void call() throws Exception {
+                int current = 0;
+                spd.set((int)sldSpeed.getValue());
+                
+                for (final String str : wordSplit) {
+                    int totCount = wordSplit.length;
+                    
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            lblReader.setText(str);
+                        }
+                    });
+                    //DELAY words per minute
+                    Thread.sleep((60 * 1000 / WORD_DELAY )  );
+                    current++;
+                    this.updateProgress(current, totCount);
+                }
+
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        //.setDisable(false);
+                    }
+                });                
+               
+                return null;
+            }
+            
+        };
+        //readerTask.speedProperty().bind
+//        readerTask.speedProperty().addListener(new ChangeListener(){
 //            @Override
-//            protected Double call() throws Exception {
-//                
-//                System.out.println("READ START" + wordSplit[600]);
-//                int wordCount = wordSplit.length;
-//                int current = 0;
-//                while(current < wordCount)
-//                {
-//                    System.out.println(wordSplit[current]);
-//                    final String word = wordSplit[current];
-//                    
-//                    int delayBonus = punctuationDelay(word);
-//                    
-//                    Platform.runLater(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            lblReader.setText(word);
-//                        }
-//                    });
-//                    //DELAY words per minute
-//                    Thread.sleep((60 * 1000 / WORD_DELAY )  + (delayBonus*7500/WORD_DELAY));
-//                }
-//
-//                Platform.runLater(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        btnToggleRead.setSelected(false);
-//                    }
-//                });
-//                
-//
-//                return 100.0;
+//            public void changed(ObservableValue o, Object oldVal, Object newVal)
+//            {
+//                System.out.println("Speed Change");
 //            }
-//        };
+//        });
+        readProgress.progressProperty().bind(readerTask.progressProperty());
+            readExec.execute(readerTask);
     }
     
     private void addFiles(List<File> files)
@@ -331,45 +358,20 @@ public class RsvpFXMLController {
         tabReader.setDisable(false);
     }
     
-    class ReadTask extends Task<Double>
+    
+    private int punctuationDelay(String s)
     {
-        private String[] wordSplit;
-        private int wordDelay;
-        
-        public ReadTask(String[] words, int delay)
+        char endChar = s.charAt(s.length()-1);
+        switch(endChar)
         {
-            this.wordSplit = words;
-            this.wordDelay = delay;
+            case '.': return 5;                
+            case ',': return 3;
+            case '?': return 5;
+            case '!': return 2;
+            case ':': return 3;
+            default: return 0;            
         }
-        
-        @Override
-        protected Double call() throws Exception {
             
-            System.out.println("READ START" + wordSplit[600]);
-                int wordCount = wordSplit.length;
-                int current = 0;
-                while(current < wordCount)
-                {
-                    System.out.println(wordSplit[current]);
-                    final String word = wordSplit[current];
-                    
-                    int delayBonus = punctuationDelay(word);
-                    
-                    Platform.runLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            lblReader.setText(word);
-                        }
-                    });
-                    //DELAY words per minute
-                    Thread.sleep((60 * 1000 / wordDelay )  + (delayBonus*7500/wordDelay));
-                    current++;
-                    this.updateProgress(current, wordCount);
-                    this.updateValue((double)wordCount-current);
-                }
-            
-            return null;
-        }
     }
     
     class FileDownTask extends Task<String[]>
@@ -487,20 +489,7 @@ public class RsvpFXMLController {
         
     }
     
-    private int punctuationDelay(String s)
-    {
-        char endChar = s.charAt(s.length()-1);
-        switch(endChar)
-        {
-            case '.': return 5;                
-            case ',': return 3;
-            case '?': return 5;
-            case '!': return 2;
-            case ':': return 3;
-            default: return 0;            
-        }
-            
-    }
+    
     
     private String[] parseString(String in)
     {
