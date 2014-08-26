@@ -9,6 +9,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.Scanner;
@@ -30,18 +32,16 @@ import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -88,6 +88,12 @@ public class RsvpFXMLController {
 
     @FXML
     private Label lblWPM;
+    
+    @FXML
+    private Label lblLoadMessage;
+    
+    @FXML
+    private Label lblFileTitle;
 
     @FXML
     private ListView<File> lstFiles;
@@ -126,6 +132,8 @@ public class RsvpFXMLController {
         fileChooser.setTitle("Open Files");
         fileChooser.getExtensionFilters().add(new ExtensionFilter("Text Files", "*.txt", "*.pdf"));
 
+        lstFiles.getSelectionModel().clearSelection();
+        
         List<File> selected = fileChooser.showOpenMultipleDialog(null);
         ObservableList<File> files = FXCollections.observableArrayList();
 
@@ -133,41 +141,46 @@ public class RsvpFXMLController {
             files.add(f);
         }
 
-        lstFiles.setItems(files);
+        lstFiles.getItems().addAll(files);
 
         lstFiles.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<File>() {
             @Override
             public void changed(ObservableValue<? extends File> observable, File oldValue, File newValue) {
-                System.out.println("SELECTED: " + newValue.getName());
+                if(newValue != null && newValue.exists() )
+                {    
+                    System.out.println("SELECTED: " + newValue.getName());
+                    final Task<String[]> task = new FileDownTask(newValue);
 
-                final Task<String[]> task = new FileDownTask(newValue);
+                    task.setOnSucceeded(new EventHandler<WorkerStateEvent>() {
+                        @Override
+                        public void handle(WorkerStateEvent t) {
+                            wordSplit = task.getValue();
+                            System.out.println("LOADED!");
+                            System.out.println("Words: " + wordSplit.length);
+                            setupReader();
+                        }
 
-                task.setOnSucceeded(new EventHandler<WorkerStateEvent>() {
-                    @Override
-                    public void handle(WorkerStateEvent t) {
-                        wordSplit = task.getValue();
-                        System.out.println("LOADED!");
-                        System.out.println("Words: " + wordSplit.length);
-                        setupReader();
-                    }
+                    });
+                
+                    splitProgress.progressProperty().bind(task.progressProperty());
+                    lblLoadMessage.textProperty().bind(task.messageProperty());
+                    lblFileTitle.textProperty().bind(task.titleProperty());
+                    //splitProgress.set
+                    executor = Executors.newFixedThreadPool(1, new ThreadFactory() {
+                        @Override
+                        public Thread newThread(Runnable r) {
+                            Thread t = new Thread(r);
+                            t.setDaemon(true);
+                            return t;
+                        }
+                    });
 
-                });
+                    executor.execute(task);
 
-                splitProgress.progressProperty().bind(task.progressProperty());
-
-                executor = Executors.newFixedThreadPool(1, new ThreadFactory() {
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        Thread t = new Thread(r);
-                        t.setDaemon(true);
-                        return t;
-                    }
-                });
-
-                executor.execute(task);
-
+                }
             }
         });
+        
         //addFiles(selected);
     }
 
@@ -209,45 +222,54 @@ public class RsvpFXMLController {
         });
 
         readerTask = new Task<Void>() {
-                int letWidth = 50;
-                double x = 0;
-                double y = 0;
-                double moveX = 0;
+                int letWidth = 37;
+                int x = 0;
+                int y = 0;
+                int moveX = 0;
+                int prevX = 0;
+                int anchorX = 0;
                 
-            private IntegerProperty spd = new SimpleIntegerProperty(wpm);
+            private final IntegerProperty speed = new SimpleIntegerProperty(wpm);
 
             public final int getSpd() {
-                return spd.get();
+                return speed.get();
             }
 
             public final void setSpd(int spd) {
-                this.spd.set(spd);
+                this.speed.set(spd);
             }
 
             public IntegerProperty speedProperty() {
-                return spd;
+                return speed;
             }
 
             @Override
             protected Void call() throws Exception {
                 int current = 0;
-                
+//                for(int j = 0; j<200;j++)
+//                    System.out.println("WORD #" +(j+1) + ": " + wordSplit[j]);
                 
                 int totCount = wordSplit.length;
-                for (final String str : wordSplit) {                    
-                    calcPlacement(str);
-                    Platform.runLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            lblReader.setTranslateX(moveX);
-                            lblReader.setText(str);
-                            System.out.println("Width: " + lblReader.getWidth());
-                        }
-                    });
-                    //DELAY words per minute
-                    Thread.sleep((60 * 1000 / getSpd())+(punctuationDelay(str)*getSpd()/20));
-                    current++;
-                    this.updateProgress(current, totCount);
+                for (final String str : wordSplit) {  
+                    final String cleanStr = str.trim();
+                    if(!str.isEmpty())
+                    {
+                        
+                        Platform.runLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                
+                                lblReader.setTranslateX(calcPlacement(cleanStr));
+                                
+                                lblReader.setText(cleanStr);
+                                //System.out.println("Width: " + lblReader.getWidth());
+                            }
+                        });
+                        //DELAY words per minute
+                        Thread.sleep((60 * 1000 / getSpd())+(punctuationDelay(cleanStr)*getSpd()/40));
+                        current++;
+                        this.updateProgress(current, totCount);
+                    }
                 }
                 
                 
@@ -265,12 +287,19 @@ public class RsvpFXMLController {
                 
                 return null;
             }
-            private void calcPlacement(String str) {
+            private double calcPlacement(String str) {
+                int anchPrev = anchorX;
                 int thirds = str.length()/3;
-                if(str.length()<=3)
+                if(str.length()<=5)
                     thirds = 2;
+                if(str.length() == 1)
+                    thirds = 1;
                 
-                moveX = (double)(thirds-2)*letWidth;
+                moveX = ((2-thirds)-anchPrev)*letWidth;
+                anchorX = 2-thirds;
+                //moveX += anchTemp;
+                System.out.println("len: " +str.length()+ " | thirds: " +thirds + " | prev-anchor: " + anchPrev +  " | curr-anchor: " + anchorX +" | move: " + moveX + " | " + str);
+                return moveX;
             }
             
             private int punctuationDelay(String s) {
@@ -293,7 +322,9 @@ public class RsvpFXMLController {
             }
 
         };
-
+//Slider slider = new Slider();
+////slider.
+//        readerTask.speedProperty().bind(slider.valueProperty());
         readProgress.progressProperty().bind(readerTask.progressProperty());
         readExec.execute(readerTask);
     }
@@ -311,7 +342,7 @@ public class RsvpFXMLController {
 
         public FileDownTask(File f) {
             loadFile = f;
-            this.updateTitle(loadFile.getName());
+            this.updateTitle(loadFile.getName().substring(0,loadFile.getName().length()-4));
             this.updateMessage("standing by");
             this.updateProgress(0, 10);
         }
@@ -319,10 +350,10 @@ public class RsvpFXMLController {
         @Override
         protected String[] call() throws Exception {
             if (loadFile.getAbsolutePath().endsWith(".txt")) {
-                this.updateMessage("loading txt file");
+                this.updateMessage(loadFile.getName() + "loading txt file");
                 return breakApart(parseTextFile());
             } else if (loadFile.getAbsolutePath().endsWith(".pdf")) {
-                this.updateMessage("loading pdf file");
+                this.updateMessage(loadFile.getName() + "loading pdf file");
                 return breakApart(parsePdfFile());
             }
 
@@ -331,15 +362,16 @@ public class RsvpFXMLController {
 
         private String parsePdfFile() {
             try {
-                this.updateProgress(1, 10);
+                this.updateProgress(0, 10);
                 PDDocument pdfDoc = PDDocument.load(loadFile);
+                this.updateProgress(2, 10);
                 PDFTextStripper stripper = new PDFTextStripper();
                 String data = "";
                 int pages = stripper.getEndPage();
                 this.updateProgress(4, 10);
                 data = stripper.getText(pdfDoc);
                 
-                this.updateProgress(8, 10);
+                this.updateProgress(6, 10);
 //                int currentPage = 1;
 //                int interval = pages/100;
 //                if(interval < 1)
@@ -366,7 +398,7 @@ public class RsvpFXMLController {
 //                }
 
                 pdfDoc.close();
-                this.updateProgress(10, 10);
+                this.updateProgress(8, 10);
 
                 return data;
             } catch (IOException ex) {
@@ -388,10 +420,10 @@ public class RsvpFXMLController {
                     loaded += line.length() * 2;
                     //data += line.replace("\n", " ");
                     data += line;
-                    this.updateProgress(loaded, fileSize);
+                    this.updateProgress(loaded, fileSize*1.2);
                 }
                 s.close();
-                this.updateProgress(100, 100);
+                this.updateProgress(80, 100);
                 return data;
             } catch (FileNotFoundException e) {
                 System.out.println("TEXT FILE READ ERROR");
@@ -400,19 +432,62 @@ public class RsvpFXMLController {
         }
 
         private String[] breakApart(String in) {
-            this.updateMessage("seperating words");
+            this.updateMessage(loadFile.getName() + " seperating words");
             String removeBreaks = in.replace("\n", " ");
             String[] words = removeBreaks.split(" ");
-            this.updateMessage("ready.");
-            return words;
+            ArrayList<String> wordsClean = new ArrayList<>();
+            double counter = 0.0;
+            double total = words.length;
+            for(String w : words)
+            {
+                w = w.trim();
+                if(!w.isEmpty())
+                {
+                    if(w.length()<=9 || w.endsWith(".") || w.endsWith(",") || w.endsWith("?") || w.endsWith("!") || w.endsWith(";") || w.endsWith(":") || w.endsWith("'") || w.endsWith("\""))
+                    {
+                        wordsClean.add(w);
+                    }
+                    else
+                    {
+                        String[] doubleBreak = shatter(w);
+                        wordsClean.addAll(Arrays.asList(doubleBreak));
+                    }
+                    
+                }
+                    
+                double percentage = counter/total;
+                this.updateProgress(80+ (20*percentage), 100);
+                counter++;
+                //System.out.println("PERCENTAGE: " + percentage);
+            }            
+            String[] cleanedIn = new String[wordsClean.size()];
+            wordsClean.toArray(cleanedIn);
+            this.updateProgress(100, 100);
+            this.updateMessage(loadFile.getName() + " ready.");
+            return cleanedIn;
+        }
+        
+        private String[] shatter(String tooBig)
+        {
+            double endCount = tooBig.length()/8;
+            int wordCount = (int)endCount;
+            if(tooBig.length() % 8 > 0 )
+                wordCount++;
+            
+            String[] children = new String[wordCount];
+            for(int i = 0; i < wordCount-1; i++)
+            {
+                children[i] = tooBig.substring((i*8), (i*8)+8) + "-";
+            }
+            children[wordCount-1] = tooBig.substring((wordCount-1)*8, tooBig.length());
+//            System.out.println("&&&&&");
+//            System.out.println(tooBig);
+//            System.out.println(Arrays.toString(children));
+//            System.out.println("&&&&&");
+            return children;
         }
 
     }
 
-    private String[] parseString(String in) {
-
-        String[] words = in.split(" ");
-
-        return words;
-    }
+    
 }
