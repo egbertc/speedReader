@@ -19,9 +19,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javafx.application.Platform;
-import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -32,26 +30,20 @@ import javafx.concurrent.WorkerStateEvent;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
-import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
-import javafx.scene.control.cell.ProgressBarTableCell;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
-import javafx.util.Callback;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.util.PDFTextStripper;
 
@@ -117,6 +109,10 @@ public class RsvpFXMLController {
     @FXML
     void goToReader(ActionEvent event) {
         tabWelcome01.getTabPane().getSelectionModel().selectNext();
+        System.out.println("X: "+lblReader.getTranslateX());
+        System.out.println("Y: "+lblReader.getTranslateY());
+        System.out.println("BaselineOff: "+lblReader.getBaselineOffset());
+        //System.out.println("Y: "+lblReader.
     }
 
     @FXML
@@ -179,7 +175,7 @@ public class RsvpFXMLController {
     void toggleRead(ActionEvent event) {
         System.out.println("BUTTON is Selected: " + btnToggleRead.isSelected());
 
-        if (btnToggleRead.isSelected()) {
+        if (!btnToggleRead.isSelected()) {
             btnToggleRead.setText("Read");
             if (readerTask.isRunning()) {
                 readerTask.cancel();
@@ -197,6 +193,8 @@ public class RsvpFXMLController {
         assert tabReader != null : "fx:id=\"tabReader\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
         assert btnToggleRead != null : "fx:id=\"btnToggleRead\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
 
+        
+        
     }
 
     private void initRead() {
@@ -211,7 +209,11 @@ public class RsvpFXMLController {
         });
 
         readerTask = new Task<Void>() {
-
+                int letWidth = 50;
+                double x = 0;
+                double y = 0;
+                double moveX = 0;
+                
             private IntegerProperty spd = new SimpleIntegerProperty(wpm);
 
             public final int getSpd() {
@@ -229,13 +231,15 @@ public class RsvpFXMLController {
             @Override
             protected Void call() throws Exception {
                 int current = 0;
-
-                for (final String str : wordSplit) {
-                    int totCount = wordSplit.length;
-
+                
+                
+                int totCount = wordSplit.length;
+                for (final String str : wordSplit) {                    
+                    calcPlacement(str);
                     Platform.runLater(new Runnable() {
                         @Override
                         public void run() {
+                            lblReader.setTranslateX(moveX);
                             lblReader.setText(str);
                             System.out.println("Width: " + lblReader.getWidth());
                         }
@@ -245,6 +249,8 @@ public class RsvpFXMLController {
                     current++;
                     this.updateProgress(current, totCount);
                 }
+                
+                
 
                 Platform.runLater(new Runnable() {
                     @Override
@@ -254,8 +260,17 @@ public class RsvpFXMLController {
                         System.out.println("SPEED: " + getSpd());
                     }
                 });
-
+                
+                
+                
                 return null;
+            }
+            private void calcPlacement(String str) {
+                int thirds = str.length()/3;
+                if(str.length()<=3)
+                    thirds = 2;
+                
+                moveX = (double)(thirds-2)*letWidth;
             }
             
             private int punctuationDelay(String s) {
