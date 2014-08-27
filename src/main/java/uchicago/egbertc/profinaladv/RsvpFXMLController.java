@@ -38,7 +38,6 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SelectionMode;
-import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -51,11 +50,11 @@ import org.apache.pdfbox.util.PDFTextStripper;
 public class RsvpFXMLController {
 
     private Task<Void> readerTask;
-    //private String readString;
+    
     private String[] wordSplit;
     public int wpm = 500;
     public ExecutorService executor;
-    //PDDocument doc = new PDDocument();
+    
 
     @FXML
     private ResourceBundle resources;
@@ -105,6 +104,7 @@ public class RsvpFXMLController {
     @FXML
     private ProgressIndicator splitProgress;
 
+    // updates speed to user input.
     @FXML
     void updateSpeed(ActionEvent event) {
         wpm = Integer.parseInt(txtSpeed.getText());
@@ -113,6 +113,7 @@ public class RsvpFXMLController {
         lblWPM.setText(wpm + " words/minute");
     }
 
+    // when the next button gets clicked
     @FXML
     void goToReader(ActionEvent event) {
         tabWelcome01.getTabPane().getSelectionModel().selectNext();
@@ -121,54 +122,52 @@ public class RsvpFXMLController {
         System.out.println("BaselineOff: "+lblReader.getBaselineOffset());
         //System.out.println("Y: "+lblReader.
     }
-
-    @FXML
-    void fileDrag(ActionEvent event) {
-        System.out.println("FILE DRAG");
-    }
-
+    
+    // opens file browswer.
     @FXML
     void fileFinder(ActionEvent event) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Open Files");
-        fileChooser.getExtensionFilters().add(new ExtensionFilter("Text Files", "*.txt", "*.pdf"));
+        fileChooser.getExtensionFilters().add(new ExtensionFilter("Text Files", "*.txt", "*.pdf")); // only allows txt and pdf
 
-        //lstFiles.getSelectionModel().clearSelection();
-        
         List<File> selected = fileChooser.showOpenMultipleDialog(null);
+        
+        // turn the files into observable lists for use with a ListView
         ObservableList<File> files = FXCollections.observableArrayList();
 
         for (File f : selected) {
             files.add(f);
         }
-
-        lstFiles.getItems().addAll(files);
+        // add selcted files
+        lstFiles.getItems().addAll(files);     
         
-        
-
+        // got a little Stack Overflow help from Uluk Biy for the change listener (Stack Overflow)
+        // fires off an event when the user selects an file from the ListView
         lstFiles.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<File>() {
+            
             @Override
             public void changed(ObservableValue<? extends File> observable, File oldValue, File newValue) {
-                if(newValue != null && newValue.exists() )
-                {    
-                    System.out.println("SELECTED: " + newValue.getName());
+                if (newValue != null && newValue.exists()) {
+                    
+                    //create a new FileDownTask to parse in the selected file.
                     final Task<String[]> task = new FileDownTask(newValue);
 
+                    // when the file has been parsed and split into a string[] of each word
                     task.setOnSucceeded(new EventHandler<WorkerStateEvent>() {
                         @Override
                         public void handle(WorkerStateEvent t) {
-                            wordSplit = task.getValue();
-                            System.out.println("LOADED!");
-                            System.out.println("Words: " + wordSplit.length);
+                            wordSplit = task.getValue(); //get String[] from the completed task
+                            System.out.println("LOADED! Words: " + wordSplit.length);
                             setupReader();
                         }
 
                     });
-                
+
+                    // binds a progress indicator and some labels to the Task propeties
                     splitProgress.progressProperty().bind(task.progressProperty());
                     lblLoadMessage.textProperty().bind(task.messageProperty());
                     lblFileTitle.textProperty().bind(task.titleProperty());
-                    //splitProgress.set
+                    
                     executor = Executors.newFixedThreadPool(1, new ThreadFactory() {
                         @Override
                         public Thread newThread(Runnable r) {
@@ -184,11 +183,13 @@ public class RsvpFXMLController {
             }
         });
         
+        // auto select file if it was the only one imported
         if(lstFiles.getItems().size() == 1)
             lstFiles.getSelectionModel().clearAndSelect(0);
         
     }
 
+    // fired when the read toggle button is clicked
     @FXML
     void toggleRead(ActionEvent event) {
         System.out.println("BUTTON is Selected: " + btnToggleRead.isSelected());
@@ -210,11 +211,12 @@ public class RsvpFXMLController {
         assert lblReader != null : "fx:id=\"lblReader\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
         assert tabReader != null : "fx:id=\"tabReader\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
         assert btnToggleRead != null : "fx:id=\"btnToggleRead\" was not injected: check your FXML file 'RsvpFXML.fxml'.";
-
-        lstFiles.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         
+        // only one file can be read at a time.
+        lstFiles.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);        
     }
 
+    // starts the thread that prints out the String[] file
     private void initRead() {
 
         Executor readExec = Executors.newFixedThreadPool(1, new ThreadFactory() {
@@ -227,20 +229,17 @@ public class RsvpFXMLController {
         });
 
         readerTask = new Task<Void>() {
-                int letWidth = 37;
-                int x = 0;
-                int y = 0;
-                int moveX = 0;
-                int prevX = 0;
-                int anchorX = 0;
+            int letWidth = 37; // width of each letter
+
+            int moveX = 0; // where to put the label
+            int anchorX = 0; // default location
                 
-            private final IntegerProperty speed = new SimpleIntegerProperty(wpm);
+            private final IntegerProperty speed = new SimpleIntegerProperty(wpm); // tried to bind speed couldn't get it to work
             public final void updateSpeed()
             {
                 speed.set(wpm);
             }
             public final int getSpeed() {
-                //speed.set(wpm);
                 return speed.get();
             }
 
@@ -254,27 +253,21 @@ public class RsvpFXMLController {
 
             @Override
             protected Void call() throws Exception {
-                int current = 0;
-//                for(int j = 0; j<200;j++)
-//                    System.out.println("WORD #" +(j+1) + ": " + wordSplit[j]);
-                
+                int current = 0;                
                 int totCount = wordSplit.length;
                 for (final String str : wordSplit) {  
-                    final String cleanStr = str.trim();
+                    final String cleanStr = str.trim(); // make sure there's no extra spaces
+                    // make sure not to print nothing.
                     if(!str.isEmpty())
-                    {
-                        
+                    {                        
                         Platform.runLater(new Runnable() {
                             @Override
-                            public void run() {
-                                
-                                lblReader.setTranslateX(calcPlacement(cleanStr));
-                                
-                                lblReader.setText(cleanStr);
-                                //System.out.println("Width: " + lblReader.getWidth());
+                            public void run() {                                
+                                lblReader.setTranslateX(calcPlacement(cleanStr));// places the label in the correct location for each word                          
+                                lblReader.setText(cleanStr); // update the word                        
                             }
                         });
-                        updateSpeed();
+                        updateSpeed();// reads input speed
                         Thread.sleep((60 * 1000 / getSpeed())+(punctuationDelay(cleanStr)*getSpeed()/20));
                         current++;
                         this.updateProgress(current, totCount);
@@ -283,19 +276,23 @@ public class RsvpFXMLController {
                 
                 
 
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        //.setDisable(false);
-                        //spd.set(Integer.parseInt(txtSpeed.getText()));
-                        System.out.println("SPEED: " + getSpeed());
-                    }
-                });
+//                Platform.runLater(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        //.setDisable(false);
+//                        //spd.set(Integer.parseInt(txtSpeed.getText()));
+//                        System.out.println("SPEED: " + getSpeed());
+//                    }
+//                });
                 
                 
                 
                 return null;
             }
+            
+            // figures out how to place the word
+            // uses a modified 'rule of thirds'
+            // to put the target character about 1/3 into the word
             private double calcPlacement(String str) {
                 int anchPrev = anchorX;
                 int thirds = str.length()/3;
@@ -306,11 +303,12 @@ public class RsvpFXMLController {
                 
                 moveX = ((2-thirds)-anchPrev)*letWidth;
                 anchorX = 2-thirds;
-                //moveX += anchTemp;
-                System.out.println("len: " +str.length()+ " | thirds: " +thirds + " | prev-anchor: " + anchPrev +  " | curr-anchor: " + anchorX +" | move: " + moveX + " | " + str);
+                
+                //System.out.println("len: " +str.length()+ " | thirds: " +thirds + " | prev-anchor: " + anchPrev +  " | curr-anchor: " + anchorX +" | move: " + moveX + " | " + str);
                 return moveX;
             }
             
+            // set delay for each diff punc.
             private int punctuationDelay(String s) {
                 char endChar = s.charAt(s.length() - 1);
                 switch (endChar) {
@@ -331,20 +329,21 @@ public class RsvpFXMLController {
             }
 
         };
-//Slider slider = new Slider();
-////slider.
-//        readerTask.speedProperty().bind(slider.valueProperty());
+
+        // binds a large progress bar to the progress currentword/totalwords
         readProgress.progressProperty().bind(readerTask.progressProperty());
         readExec.execute(readerTask);
     }
 
+    // enables next button and read tab
+    // called when a file gets parsed into a String[]
     private void setupReader() {
         btnNext.setDisable(false);
         tabReader.setDisable(false);
     }
 
     
-
+    // Task that turns a txt or pdf into a String[]
     class FileDownTask extends Task<String[]> {
 
         private final File loadFile;
@@ -358,6 +357,7 @@ public class RsvpFXMLController {
 
         @Override
         protected String[] call() throws Exception {
+            // decides how to load the file based on extension
             if (loadFile.getAbsolutePath().endsWith(".txt")) {
                 this.updateMessage(loadFile.getName() + "loading txt file");
                 return breakApart(parseTextFile());
@@ -369,18 +369,27 @@ public class RsvpFXMLController {
             return null;
         }
 
+        //uses org.apache.pdfbox
         private String parsePdfFile() {
             try {
                 this.updateProgress(0, 10);
-                PDDocument pdfDoc = PDDocument.load(loadFile);
+                PDDocument pdfDoc = PDDocument.load(loadFile); 
                 this.updateProgress(2, 10);
+                // the stripper is what gets the text from the pdf file
                 PDFTextStripper stripper = new PDFTextStripper();
                 String data = "";
                 int pages = stripper.getEndPage();
                 this.updateProgress(4, 10);
+                // gets the entire file in one go
                 data = stripper.getText(pdfDoc);
                 
                 this.updateProgress(6, 10);
+                
+                /*
+                I was trying split the loading of the file into different segments to get a more accurate
+                progress report. I kept getting weird jumpness when I tried to load a page at a time
+                */
+                
 //                int currentPage = 1;
 //                int interval = pages/100;
 //                if(interval < 1)
@@ -418,6 +427,7 @@ public class RsvpFXMLController {
             return null;
         }
 
+        // pretty easy to parse a text file
         private String parseTextFile() {
             try {
                 Scanner s = new Scanner(loadFile);
@@ -427,12 +437,11 @@ public class RsvpFXMLController {
                 while (s.hasNext()) {
                     String line = s.next();
                     loaded += line.length() * 2;
-                    //data += line.replace("\n", " ");
                     data += line;
-                    this.updateProgress(loaded, fileSize*1.2);
+                    this.updateProgress(loaded, fileSize*1.2); // attempt at some sort of progress update
                 }
                 s.close();
-                this.updateProgress(80, 100);
+                this.updateProgress(80, 100); // leave room for desert.
                 return data;
             } catch (FileNotFoundException e) {
                 System.out.println("TEXT FILE READ ERROR");
@@ -440,6 +449,7 @@ public class RsvpFXMLController {
             return null;
         }
 
+        // takes the 
         private String[] breakApart(String in) {
             this.updateMessage(loadFile.getName() + " seperating words");
             String removeBreaks = in.replace("\n", " ");
